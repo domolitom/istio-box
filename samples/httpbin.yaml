@@ -1,0 +1,48 @@
+# httpbin — HTTP header/status dumper, used as the server in mesh traffic tests.
+# Pinned to worker 1 so that calls from netshoot (on worker 2) cross nodes
+# and exercise the ztunnel-to-ztunnel mTLS path.
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: httpbin
+  labels:
+    # Opt the whole namespace into the ambient data plane.
+    istio.io/dataplane-mode: ambient
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: httpbin
+  namespace: httpbin
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: httpbin
+  template:
+    metadata:
+      labels:
+        app: httpbin
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: istio-ambient-worker
+      containers:
+        - name: httpbin
+          image: mccutchen/go-httpbin:v2.15.0
+          ports:
+            - name: http
+              containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: httpbin
+  namespace: httpbin
+spec:
+  selector:
+    app: httpbin
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8080

@@ -59,3 +59,33 @@ Uninstall with:
 ```sh
 ./scripts/uninstall-istio.sh
 ```
+
+### 3. Deploy two test workloads
+
+We need something to actually push traffic through the mesh. Two minimal in-mesh pods, deliberately scheduled on **different nodes** so requests cross the ztunnel-to-ztunnel mTLS path:
+
+| Workload | Namespace | Role | Pinned to |
+|---|---|---|---|
+| `httpbin` ([`mccutchen/go-httpbin`](https://github.com/mccutchen/go-httpbin)) | `httpbin` | server — echoes request headers, status codes, etc. | `istio-ambient-worker` |
+| `netshoot` ([`nicolaka/netshoot`](https://github.com/nicolaka/netshoot)) | `netshoot` | client — has `curl`, `tcpdump`, `dig`, `mtr`, … | `istio-ambient-worker2` |
+
+Both namespaces carry the label `istio.io/dataplane-mode=ambient`, which opts every pod inside them into the data plane — no per-pod annotation needed.
+
+```sh
+kubectl apply -f samples/httpbin.yaml -f samples/netshoot.yaml
+kubectl -n httpbin   rollout status deploy/httpbin
+kubectl -n netshoot  rollout status deploy/netshoot
+```
+
+Send a request from netshoot to httpbin — traffic flows `netshoot → ztunnel (worker 2) → ztunnel (worker 1) → httpbin`, with mTLS·HBONE only on the middle (ztunnel-to-ztunnel) hop:
+
+```sh
+kubectl -n netshoot exec deploy/netshoot -- \
+  curl -s httpbin.httpbin.svc.cluster.local:8000/headers
+```
+
+Tear the workloads down with:
+
+```sh
+kubectl delete -f samples/httpbin.yaml -f samples/netshoot.yaml
+```
