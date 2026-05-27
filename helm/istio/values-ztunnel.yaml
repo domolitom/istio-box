@@ -1,0 +1,5 @@
+# istio/ztunnel — the per-node L4 secure-overlay proxy (DaemonSet).
+# Together with the CNI plugin, this forms the ambient data plane:
+# one ztunnel per node handles mTLS and L4 policy for all ambient pods
+# on that node.
+profile: ambient

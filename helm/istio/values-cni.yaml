@@ -1,0 +1,4 @@
+# istio/cni — installs the istio-cni plugin on every node.
+# In ambient mode the CNI plugin programs in-pod traffic redirection
+# that hands packets to the per-node ztunnel.
+profile: ambient

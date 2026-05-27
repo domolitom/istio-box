@@ -1,0 +1,4 @@
+# istio/istiod — the Istio control plane (Pilot).
+# `profile: ambient` applies the chart defaults appropriate for the
+# ambient data plane (no automatic sidecar injection, etc.).
+profile: ambient

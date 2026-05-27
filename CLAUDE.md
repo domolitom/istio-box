@@ -15,4 +15,6 @@ A sandbox and a tutorial for Istio in ambient mode on a local kind cluster. The 
 ## State
 
 - `kind/cluster.yaml` — 1 control-plane + 2 workers, ports 80/443 mapped on the control-plane, cluster name `istio-ambient`.
-- No Istio install scripts or sample workloads yet.
+- `helm/istio/values-{base,istiod,cni,ztunnel}.yaml` — one values file per Istio Helm chart, each documented with a header comment.
+- `scripts/install-istio.sh` / `scripts/uninstall-istio.sh` — install the four ambient charts in order (and remove them in reverse). Istio version is pinned at the top of the install script.
+- No sample workloads yet.

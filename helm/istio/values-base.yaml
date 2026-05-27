@@ -1,0 +1,3 @@
+# istio/base — installs Istio CRDs and the validating webhook.
+# Usually no overrides are needed for a sandbox; add fields here if
+# you want to tweak CRD installation or the validating webhook.
