@@ -4,24 +4,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Purpose
 
-Sandbox environment for experimenting with Istio. Initial target is Istio running in **ambient mode** (sidecar-less data plane using ztunnel + waypoints) on a local **kind** cluster with **2 nodes**.
+A sandbox and a tutorial for Istio in ambient mode on a local kind cluster. The history is meant to be readable — each commit is a tutorial step.
 
-## Tutorial-shaped history
+## Conventions
 
-This repo is also a tutorial. Each commit should be a small, self-contained tutorial step so readers can walk the history with `git log --oneline --reverse`. When adding new functionality:
+- One small, self-contained change per commit. Update `README.md`'s steps section in the same commit that introduces the step.
+- Keep all prose short, human-readable, and educational — explain the *why* a learner needs, not more.
+- No `Co-Authored-By: Claude` trailer in commit messages.
 
-- Make one logical change per commit (e.g. "add kind manifest", "install Istio ambient", "deploy bookinfo sample") rather than bundling unrelated work.
-- Update `README.md`'s "Tutorial steps" section in the same commit that introduces the step, so the narrative stays in sync with the code.
-- Prefer a commit message that names the step (e.g. `tutorial: step N — <what it does>` or a conventional-commit style scope that mirrors the area touched, e.g. `kind:`, `istio:`).
+## State
 
-## Current state
-
-- `kind/cluster.yaml` — 1 control-plane + 2 workers, ports 80/443 mapped to host, cluster name `istio-ambient`.
+- `kind/cluster.yaml` — 1 control-plane + 2 workers, ports 80/443 mapped on the control-plane, cluster name `istio-ambient`.
 - No Istio install scripts or sample workloads yet.
-
-## Next likely steps
-
-- A bootstrap script or Makefile target that installs Istio in the ambient profile (`istioctl install --set profile=ambient`).
-- Sample workloads in a `samples/` directory for exercising L4/L7 ambient features (ztunnel, waypoint proxies, authorization policies).
-
-Update this file with concrete commands once they exist — do not invent commands that aren't actually wired up.
