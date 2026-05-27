@@ -11,6 +11,7 @@ A sandbox and a tutorial for Istio in ambient mode on a local kind cluster. The 
 - One small, self-contained change per commit. Update `README.md`'s steps section in the same commit that introduces the step.
 - Keep all prose short, human-readable, and educational — explain the *why* a learner needs, not more.
 - No `Co-Authored-By: Claude` trailer in commit messages.
+- **Never `Write` an existing file to apply changes — use targeted `Edit` calls, no matter how many fields change.** `Write` is for first creation only. This applies to all files, including diagrams (`.excalidraw`).
 
 ## State
 
