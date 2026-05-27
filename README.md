@@ -23,4 +23,27 @@ A 3-node kind cluster (1 control-plane + 2 workers) running Istio's ambient data
 
 ## Tutorial steps
 
-_None yet. Steps will be added as commits land._
+### Step 1 — Create the kind cluster
+
+The cluster manifest at [`kind/cluster.yaml`](./kind/cluster.yaml) defines:
+
+- 1 control-plane node + 2 worker nodes (so we can exercise cross-node ambient traffic).
+- Host ports `80` and `443` mapped into the control-plane container, with the node labelled `ingress-ready=true` so an Istio ingress gateway can be pinned there with a `nodeSelector` later.
+
+Create it:
+
+```sh
+kind create cluster --config kind/cluster.yaml
+```
+
+Verify the three nodes are up:
+
+```sh
+kubectl get nodes
+```
+
+When you're done experimenting:
+
+```sh
+kind delete cluster --name istio-ambient
+```
