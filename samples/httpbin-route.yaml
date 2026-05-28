@@ -1,0 +1,26 @@
+# HTTPRoute that exposes httpbin through the istio-system ingress Gateway.
+# Lives in the same namespace as httpbin. parentRefs cross the namespace
+# boundary to reach the Gateway in istio-system.
+#
+# The hostname is what you send in the Host header (or via /etc/hosts) when
+# you curl the gateway from outside the cluster.
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: httpbin
+  namespace: httpbin
+spec:
+  parentRefs:
+    - name: ingress
+      namespace: istio-system
+  hostnames:
+    - httpbin.local
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: httpbin
+          port: 8000

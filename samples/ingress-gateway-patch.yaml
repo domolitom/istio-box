@@ -1,0 +1,26 @@
+# Strategic-merge patch applied to the Istio auto-created gateway Deployment
+# (named `ingress-istio` because the Gateway is named `ingress`). Two changes:
+#
+#   1. Pin the pod to the kind control-plane node. That node has the
+#      `ingress-ready=true` label (set in kind/cluster.yaml) and carries the
+#      hostPort 80 → containerPort 80 mapping that lets us reach the gateway
+#      from the host.
+#   2. Add `hostPort: 80` to the istio-proxy container so kubelet binds the
+#      node's port 80 to the gateway. Envoy is already listening on 80 because
+#      the Gateway listener is configured for port 80; we're just exposing it.
+spec:
+  template:
+    spec:
+      nodeSelector:
+        ingress-ready: "true"
+      tolerations:
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: istio-proxy
+          ports:
+            - containerPort: 80
+              hostPort: 80
+              protocol: TCP
+              name: http

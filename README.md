@@ -103,3 +103,63 @@ Tear the workloads down with:
 # Tear down the test workloads
 kubectl delete -f samples/httpbin.yaml -f samples/netshoot.yaml
 ```
+
+### Step 3 — Ingress gateway (Gateway API)
+
+Brings up an Istio ingress gateway declared as a **Kubernetes Gateway API** `Gateway` (not the legacy Istio `gateway.networking.istio.io` CRD), pins the data-plane pod to the kind control-plane node so it inherits the `hostPort: 80` mapping, exposes httpbin through an HTTPRoute, and reaches it from your host with `curl localhost`. Traffic flow this step exercises: **host → gateway (L7) → mesh → httpbin**.
+
+Istio doesn't bundle the Gateway API CRDs, so install them first:
+
+```sh
+# Install the Gateway API standard CRDs
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+```
+
+#### Create the Gateway
+
+```sh
+# Apply the Gateway — Istio auto-creates a Deployment + Service named "ingress-istio"
+kubectl apply -f samples/ingress-gateway.yaml
+kubectl -n istio-system wait --for=condition=Available deploy/ingress-istio --timeout=60s
+```
+
+The Service comes up as type `LoadBalancer` (stays `<pending>` in kind, which is fine — we use hostPort instead). The pod by default lands on a worker node, so it can't bind to the host's port 80.
+
+#### Patch the gateway pod for kind reachability
+
+```sh
+# Move the pod to the control-plane node and bind hostPort 80 → containerPort 80
+kubectl -n istio-system patch deploy ingress-istio --patch-file samples/ingress-gateway-patch.yaml
+kubectl -n istio-system wait --for=condition=Ready pod -l 'gateway.networking.k8s.io/gateway-name=ingress' --timeout=60s
+```
+
+The patch adds `nodeSelector: ingress-ready=true` (the label set in [`kind/cluster.yaml`](./kind/cluster.yaml)) plus a control-plane toleration, and gives the istio-proxy container a `containerPort: 80, hostPort: 80` entry so kubelet binds the node's port 80 to it.
+
+> **Why the control-plane node?** Only that node has `hostPort 80` mapped to the host in kind — a tutorial shortcut. In a real cluster the gateway would run on a worker behind a load balancer.
+
+#### Expose httpbin via HTTPRoute
+
+```sh
+# HTTPRoute (in the httpbin namespace) binds the httpbin Service to the Gateway under hostname httpbin.local
+kubectl apply -f samples/httpbin-route.yaml
+```
+
+The HTTPRoute's `parentRefs` crosses namespaces (it lives in `httpbin` and references the Gateway in `istio-system`). The Gateway allows this because its `allowedRoutes.namespaces.from: All`.
+
+#### Test from the host
+
+```sh
+# Request goes: Mac:80 → kind control-plane:80 → gateway (L7) → ztunnel → httpbin
+curl -s -H "Host: httpbin.local" http://localhost/headers
+```
+
+You'll see `X-Envoy-*` and `X-Forwarded-*` headers in the response — these are added by the gateway (L7). The hop from the gateway to httpbin is still ambient mTLS via ztunnel.
+
+#### Tear down
+
+```sh
+# Remove the HTTPRoute, the Gateway, and the Gateway API CRDs
+kubectl delete -f samples/httpbin-route.yaml
+kubectl delete -f samples/ingress-gateway.yaml
+kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+```
