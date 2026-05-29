@@ -155,6 +155,8 @@ curl -s -H "Host: httpbin.local" http://localhost/headers
 
 You'll see `X-Envoy-*` and `X-Forwarded-*` headers in the response — these are added by the gateway (L7). The hop from the gateway to httpbin is still ambient mTLS via ztunnel.
 
+> **Why `-H "Host: httpbin.local"` and not `http://httpbin.local/headers`?** `httpbin.local` isn't registered in DNS or `/etc/hosts`, so curl can't resolve it. We connect to `localhost` (which does resolve) and forge the `Host:` header so the gateway's Envoy picks the right `HTTPRoute`. To skip the flag, add `127.0.0.1 httpbin.local` to `/etc/hosts`.
+
 #### Tear down
 
 ```sh
