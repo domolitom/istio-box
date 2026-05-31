@@ -202,3 +202,24 @@ Tear down with:
 ```sh
 kubectl delete -f samples/waypoint.yaml
 ```
+
+### Step 5 — Route gateway traffic through the waypoint
+
+By default, Istio's ingress gateway **bypasses** the waypoint when forwarding to mesh workloads. The gateway is itself an L7 Envoy, so Istio assumes one L7 hop is enough and routes the request directly from the gateway to the destination ztunnel — the waypoint pod exists but no gateway traffic reaches it.
+
+To opt-in for `gateway → waypoint → ztunnel → pod` routing, label the destination namespace (or Service) with `istio.io/ingress-use-waypoint=true`. The updated `samples/waypoint.yaml` includes this label on the `httpbin` namespace.
+
+```sh
+# Re-apply with the new label
+kubectl apply -f samples/waypoint.yaml
+```
+
+> **Key label — route gateway traffic through the waypoint**: `istio.io/ingress-use-waypoint=true` on the destination Namespace (or per Service). Without it, gateway-originated traffic skips the waypoint even when `istio.io/use-waypoint` is set on the namespace.
+
+Verify by hitting the gateway again:
+
+```sh
+curl -i -H "Host: httpbin.local" http://localhost/headers
+```
+
+Compare the response headers to step 4's: with the label in place, the request now traverses the waypoint as an additional L7 hop before reaching httpbin.

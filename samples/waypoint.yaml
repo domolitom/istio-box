@@ -22,6 +22,10 @@ metadata:
   labels:
     istio.io/dataplane-mode: ambient
     istio.io/use-waypoint: waypoint
+    # Opt the gateway → waypoint hop in: by default ingress gateway
+    # traffic bypasses the waypoint. With this label, gateway-originated
+    # requests to services in this namespace ALSO go through the waypoint.
+    istio.io/ingress-use-waypoint: "true"
 ---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
