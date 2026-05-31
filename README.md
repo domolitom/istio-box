@@ -82,6 +82,8 @@ We need something to actually push traffic through the mesh. Two minimal in-mesh
 
 Both namespaces carry the label `istio.io/dataplane-mode=ambient`, which opts every pod inside them into the data plane — no per-pod annotation needed.
 
+> **Key label — enable ambient**: `istio.io/dataplane-mode=ambient` on the Namespace (or on a single Pod). Without it, ztunnel won't intercept traffic for those workloads. This is the *only* thing that makes a pod ambient-mesh-aware.
+
 ```sh
 # Deploy httpbin and netshoot
 kubectl apply -f samples/httpbin.yaml -f samples/netshoot.yaml
@@ -164,4 +166,39 @@ You'll see `X-Envoy-*` and `X-Forwarded-*` headers in the response — these are
 kubectl delete -f samples/httpbin-route.yaml
 kubectl delete -f samples/ingress-gateway.yaml
 kubectl delete -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.0/standard-install.yaml
+```
+
+### Step 4 — Waypoint proxy in the httpbin namespace
+
+A **waypoint** is Istio ambient's optional **L7 proxy**. ztunnel does L4 only (mTLS, identity, simple policy); anything HTTP-aware — route rules, retries, fault injection, AuthorizationPolicy on path/method/headers, JWT validation — needs an Envoy. The waypoint *is* that Envoy, scoped per namespace (or per service / per workload). When httpbin's namespace is labelled to use a waypoint, every request to a service in it goes through the waypoint before reaching the workload's ztunnel.
+
+```sh
+# Deploy the waypoint and patch the httpbin namespace to use it
+kubectl apply -f samples/waypoint.yaml
+kubectl -n httpbin wait --for=condition=Available deploy/waypoint --timeout=60s
+```
+
+The manifest does two things:
+1. Patches the `httpbin` Namespace, adding `istio.io/use-waypoint: waypoint` (the existing `istio.io/dataplane-mode: ambient` label is preserved by the apply).
+
+> **Key label — route through a waypoint**: `istio.io/use-waypoint=<waypoint-name>` on the Namespace (or per Service / per Pod). The value is the name of the `Gateway` resource that backs the waypoint. Without this label the waypoint pod exists but no traffic is steered through it.
+2. Declares a Kubernetes `Gateway` named `waypoint` with class `istio-waypoint`. Istio's gatewayClass controller auto-creates a Deployment + Service named `waypoint` listening on port 15008 (HBONE).
+
+Verify the pod is up and the namespace label is set:
+
+```sh
+kubectl -n httpbin get pod -l gateway.networking.k8s.io/gateway-name=waypoint -o wide
+kubectl get ns httpbin -o jsonpath='{.metadata.labels.istio\.io/use-waypoint}{"\n"}'
+```
+
+Re-run the curl from step 3 — it works the same from your perspective, but the data path now includes the waypoint: `host → gateway → waypoint → ztunnel (worker 1) → httpbin`.
+
+```sh
+curl -i -H "Host: httpbin.local" http://localhost/headers
+```
+
+Tear down with:
+
+```sh
+kubectl delete -f samples/waypoint.yaml
 ```
