@@ -39,6 +39,10 @@ kind: Service
 metadata:
   name: httpbin
   namespace: httpbin
+  labels:
+    # Opt-in for gateway -> waypoint routing. Without this, ingress
+    # bypasses the waypoint even though the namespace has use-waypoint set.
+    istio.io/ingress-use-waypoint: "true"
 spec:
   selector:
     app: httpbin
