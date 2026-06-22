@@ -223,3 +223,41 @@ curl -i -H "Host: httpbin.local" http://localhost/headers
 ```
 
 Compare the response headers to step 4's: with the label in place, the request now traverses the waypoint as an additional L7 hop before reaching httpbin.
+
+### Step 6 — Kiali (the mesh console)
+
+Kiali draws a live **service-graph** from Prometheus metrics and validates your Istio config. The graph is *derived from metrics*, not sniffed from the wire — so Prometheus is a hard dependency, and what shows up is exactly what the proxies report. See [`KIALI.md`](./KIALI.md) for the concepts and [`OBSERVABILITY.md`](./OBSERVABILITY.md) for the metrics behind it.
+
+Install Prometheus (the metrics backend) and Kiali, pinned to the same release as Istio (`1.30`):
+
+```sh
+# Kiali needs Prometheus first
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.30/samples/addons/prometheus.yaml
+kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.30/samples/addons/kiali.yaml
+kubectl -n istio-system rollout status deploy/kiali
+```
+
+The graph is built from request-rate metrics, so it decays without traffic — drive some through the gateway first:
+
+```sh
+# Generate ~1 min of traffic so edges appear in the graph
+for i in $(seq 1 200); do curl -s -H "Host: httpbin.local" http://localhost/headers >/dev/null; sleep 0.3; done
+```
+
+Open the dashboard and select the **httpbin** namespace in the *Graph* view:
+
+```sh
+istioctl dashboard kiali
+```
+
+This step is where the ambient L4/L7 split becomes visible. With steps 4–5's waypoint in place, the httpbin edge shows full **L7** detail — request rate, error %, and a **lock** (mTLS). Toggle the **ztunnel** and **waypoint** infrastructure nodes in the graph display options to see the real `gateway → waypoint → ztunnel → httpbin` path rather than a single logical edge.
+
+> **Ambient gotcha**: a **locked but TCP-only** edge (lock, no RPS/error %) means traffic is secured by ztunnel but *no waypoint is parsing L7*. Remove the waypoint (`kubectl delete -f samples/waypoint.yaml`) and the same edge falls back to TCP-only — the clearest demonstration that L4 comes from ztunnel and L7 from the waypoint. Re-apply to light L7 back up.
+
+Tear down with:
+
+```sh
+# Remove Kiali and Prometheus
+kubectl delete -f https://raw.githubusercontent.com/istio/istio/release-1.30/samples/addons/kiali.yaml
+kubectl delete -f https://raw.githubusercontent.com/istio/istio/release-1.30/samples/addons/prometheus.yaml
+```
